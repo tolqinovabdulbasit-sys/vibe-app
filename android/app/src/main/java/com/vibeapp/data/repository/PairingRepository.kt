@@ -40,10 +40,25 @@ class PairingRepository @Inject constructor(
     private val keystoreManager: KeystoreManager,
     private val deviceIdentityManager: DeviceIdentityManager
 ) {
-    private val db = FirebaseDatabase.getInstance().reference
-    private val PAIRING_CODES_PATH = "pairing_codes"
-    private val DEVICES_PATH = "devices"
-    private val CODE_TTL_MS = 15 * 60 * 1000L // 15 minutes
+    private fun getDb(): com.google.firebase.database.DatabaseReference {
+        return try {
+            FirebaseDatabase.getInstance().reference
+        } catch (e: Exception) {
+            FirebaseDatabase.getInstance("https://vibe-app-b07cc-default-rtdb.europe-west1.firebasedatabase.app").reference
+        }
+    }
+
+    private suspend fun ensureAuth() {
+        try {
+            val auth = FirebaseAuth.getInstance()
+            if (auth.currentUser == null) {
+                auth.signInAnonymously().await()
+                Timber.d("Signed in anonymously: ${auth.currentUser?.uid}")
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Anonymous auth failed or not enabled: ${e.message}")
+        }
+    }
 
     /**
      * Generates a one-time pairing code and writes it to Firebase.
@@ -63,9 +78,11 @@ class PairingRepository @Inject constructor(
             "used" to false
         )
 
+        ensureAuth()
+
         withTimeoutOrNull(8000) {
-            db.child(PAIRING_CODES_PATH).child(code).setValue(codeData).await()
-        } ?: throw IllegalStateException("Firebase serveriga ulanib bo'lmadi. google-services.json faylini va internetni tekshiring.")
+            getDb().child(PAIRING_CODES_PATH).child(code).setValue(codeData).await()
+        } ?: throw IllegalStateException("Firebase ulanish vaqti tugadi (Timeout 8s). Internet va Realtime Database holatini tekshiring.")
 
         Timber.d("Pairing code generated: $code")
         return code
@@ -77,7 +94,8 @@ class PairingRepository @Inject constructor(
      */
     suspend fun consumePairingCode(code: String): PairingResult {
         return try {
-            val codeRef = db.child(PAIRING_CODES_PATH).child(code)
+            ensureAuth()
+            val codeRef = getDb().child(PAIRING_CODES_PATH).child(code)
             val snapshot = codeRef.get().await()
 
             if (!snapshot.exists()) {
@@ -125,7 +143,8 @@ class PairingRepository @Inject constructor(
 
     suspend fun registerFcmToken(deviceId: String, token: String) {
         try {
-            db.child(DEVICES_PATH).child(deviceId).child("fcm_token").setValue(token).await()
+            ensureAuth()
+            getDb().child(DEVICES_PATH).child(deviceId).child("fcm_token").setValue(token).await()
         } catch (e: Exception) {
             Timber.e(e, "Failed to register FCM token")
         }

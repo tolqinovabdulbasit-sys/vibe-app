@@ -137,6 +137,22 @@ private fun GenerateCodeTab(state: PairingUiState, onGenerate: () -> Unit) {
                     Spacer(Modifier.height(16.dp))
                 }
 
+                if (state is PairingUiState.Error) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = ColorFailed.copy(alpha = 0.15f)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                    ) {
+                        Text(
+                            text = "Ошибка: ${state.message}",
+                            color = ColorFailed,
+                            fontSize = 13.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+
                 Button(
                     onClick = onGenerate,
                     colors = ButtonDefaults.buttonColors(containerColor = Primary),
