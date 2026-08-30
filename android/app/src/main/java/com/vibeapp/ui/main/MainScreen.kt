@@ -382,7 +382,6 @@ private fun SidePatternButton(
 
     Box(
         modifier = modifier
-            .weight(1f, fill = false)
             .aspectRatio(1.6f)
             .scale(scale)
             .clip(RoundedCornerShape(12.dp))
