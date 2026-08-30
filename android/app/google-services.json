@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "123456789012",
+    "firebase_url": "https://vibelink-app-demo-default-rtdb.firebaseio.com",
+    "project_id": "vibelink-app-demo",
+    "storage_bucket": "vibelink-app-demo.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:123456789012:android:abcdef1234567890",
+        "android_client_info": {
+          "package_name": "com.vibeapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDummyKeyForVibeLinkBuildTest"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
