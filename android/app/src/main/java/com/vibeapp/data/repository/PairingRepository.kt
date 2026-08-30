@@ -9,7 +9,6 @@ import com.vibeapp.core.db.dao.DeviceDao
 import com.vibeapp.core.db.dao.PairingDao
 import com.vibeapp.core.db.entity.DeviceEntity
 import com.vibeapp.core.db.entity.PairingEntity
-import com.vibeapp.data.model.PairingResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
