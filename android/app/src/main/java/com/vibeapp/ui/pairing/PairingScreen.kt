@@ -50,10 +50,10 @@ fun PairingScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add Device", color = TextPrimary, fontWeight = FontWeight.SemiBold) },
+                title = { Text("Добавить устройство", color = TextPrimary, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back", tint = TextSecondary)
+                        Icon(Icons.Default.ArrowBack, "Назад", tint = TextSecondary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Background)
@@ -76,7 +76,7 @@ fun PairingScreen(
                     .background(SurfaceVariant)
                     .padding(4.dp)
             ) {
-                listOf("Show Code", "Enter Code").forEachIndexed { idx, label ->
+                listOf("Показать код", "Ввести код").forEachIndexed { idx, label ->
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -125,7 +125,7 @@ private fun GenerateCodeTab(state: PairingUiState, onGenerate: () -> Unit) {
         when (state) {
             is PairingUiState.Idle, is PairingUiState.Error, is PairingUiState.ExpiredCode -> {
                 Text(
-                    "Generate a one-time code to share with the other device.",
+                    "Сгенерируйте одноразовый код, чтобы поделиться им с другим устройством.",
                     color = TextSecondary,
                     fontSize = 14.sp,
                     textAlign = TextAlign.Center
@@ -133,7 +133,7 @@ private fun GenerateCodeTab(state: PairingUiState, onGenerate: () -> Unit) {
                 Spacer(Modifier.height(32.dp))
 
                 if (state is PairingUiState.ExpiredCode) {
-                    Text("Code expired.", color = ColorFailed, fontSize = 14.sp)
+                    Text("Срок действия кода истек.", color = ColorFailed, fontSize = 14.sp)
                     Spacer(Modifier.height(16.dp))
                 }
 
@@ -143,21 +143,21 @@ private fun GenerateCodeTab(state: PairingUiState, onGenerate: () -> Unit) {
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    Text("Generate Code", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Сгенерировать код", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
 
             is PairingUiState.GeneratingCode -> {
                 CircularProgressIndicator(color = Primary)
                 Spacer(Modifier.height(16.dp))
-                Text("Generating...", color = TextSecondary, fontSize = 14.sp)
+                Text("Генерация...", color = TextSecondary, fontSize = 14.sp)
             }
 
             is PairingUiState.ShowingCode -> {
                 val minutes = state.expiresInSeconds / 60
                 val seconds = state.expiresInSeconds % 60
 
-                Text("Share this code with the other device", color = TextSecondary, fontSize = 14.sp,
+                Text("Поделитесь этим кодом с другим устройством", color = TextSecondary, fontSize = 14.sp,
                     textAlign = TextAlign.Center)
                 Spacer(Modifier.height(24.dp))
 
@@ -184,7 +184,7 @@ private fun GenerateCodeTab(state: PairingUiState, onGenerate: () -> Unit) {
 
                 // Countdown timer
                 Text(
-                    text = "Expires in %02d:%02d".format(minutes, seconds),
+                    text = "Истекает через %02d:%02d".format(minutes, seconds),
                     color = if (state.expiresInSeconds < 60) ColorFailed else TextSecondary,
                     fontSize = 13.sp
                 )
@@ -196,22 +196,22 @@ private fun GenerateCodeTab(state: PairingUiState, onGenerate: () -> Unit) {
                 qrBitmap?.let {
                     Image(
                         bitmap = it.asImageBitmap(),
-                        contentDescription = "QR Code",
+                        contentDescription = "QR-код",
                         modifier = Modifier
                             .size(180.dp)
                             .clip(RoundedCornerShape(16.dp))
                     )
                     Spacer(Modifier.height(8.dp))
-                    Text("Or scan QR code", color = TextTertiary, fontSize = 12.sp)
+                    Text("Или отсканируйте QR-код", color = TextTertiary, fontSize = 12.sp)
                 }
             }
 
             is PairingUiState.Success -> {
                 Icon(Icons.Default.CheckCircle, null, tint = ColorConnected, modifier = Modifier.size(64.dp))
                 Spacer(Modifier.height(16.dp))
-                Text("Paired!", color = ColorConnected, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("Сопряжено!", color = ColorConnected, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
-                Text("Connected to ${state.remoteAlias}", color = TextSecondary, fontSize = 14.sp,
+                Text("Подключено к ${state.remoteAlias}", color = TextSecondary, fontSize = 14.sp,
                     textAlign = TextAlign.Center)
             }
 
@@ -230,7 +230,7 @@ private fun EnterCodeTab(state: PairingUiState, onSubmit: (String) -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            "Enter the code displayed on the other device.",
+            "Введите код, показанный на другом устройстве.",
             color = TextSecondary,
             fontSize = 14.sp,
             textAlign = TextAlign.Center
@@ -268,9 +268,9 @@ private fun EnterCodeTab(state: PairingUiState, onSubmit: (String) -> Unit) {
 
         when (state) {
             is PairingUiState.InvalidCode ->
-                Text("Invalid code. Please check and try again.", color = ColorFailed, fontSize = 13.sp)
+                Text("Неверный код. Проверьте и попробуйте снова.", color = ColorFailed, fontSize = 13.sp)
             is PairingUiState.ExpiredCode ->
-                Text("This code has expired. Ask for a new one.", color = ColorTimeout, fontSize = 13.sp)
+                Text("Срок действия кода истек. Запросите новый.", color = ColorTimeout, fontSize = 13.sp)
             is PairingUiState.Error ->
                 Text(state.message, color = ColorFailed, fontSize = 13.sp)
             else -> {}
@@ -285,7 +285,7 @@ private fun EnterCodeTab(state: PairingUiState, onSubmit: (String) -> Unit) {
             is PairingUiState.Success -> {
                 Icon(Icons.Default.CheckCircle, null, tint = ColorConnected, modifier = Modifier.size(56.dp))
                 Spacer(Modifier.height(12.dp))
-                Text("Paired with ${state.remoteAlias}!", color = ColorConnected,
+                Text("Сопряжено с ${state.remoteAlias}!", color = ColorConnected,
                     fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
             }
             else -> {
@@ -296,7 +296,7 @@ private fun EnterCodeTab(state: PairingUiState, onSubmit: (String) -> Unit) {
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    Text("Connect", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Подключиться", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

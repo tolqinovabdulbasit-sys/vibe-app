@@ -38,15 +38,15 @@ fun DevicesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Paired Devices", color = TextPrimary, fontWeight = FontWeight.SemiBold) },
+                title = { Text("Сопряженные устройства", color = TextPrimary, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back", tint = TextSecondary)
+                        Icon(Icons.Default.ArrowBack, "Назад", tint = TextSecondary)
                     }
                 },
                 actions = {
                     IconButton(onClick = onAddDevice) {
-                        Icon(Icons.Default.PersonAdd, "Add device", tint = Primary)
+                        Icon(Icons.Default.PersonAdd, "Добавить устройство", tint = Primary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Background)
@@ -58,7 +58,7 @@ fun DevicesScreen(
                 containerColor = Primary,
                 contentColor = TextPrimary
             ) {
-                Icon(Icons.Default.Add, "Add device")
+                Icon(Icons.Default.Add, "Добавить устройство")
             }
         },
         containerColor = Background
@@ -73,9 +73,9 @@ fun DevicesScreen(
                     Icon(Icons.Default.PhoneAndroid, null, tint = TextTertiary,
                         modifier = Modifier.size(64.dp))
                     Spacer(Modifier.height(16.dp))
-                    Text("No paired devices", color = TextTertiary, fontSize = 16.sp)
+                    Text("Нет сопряженных устройств", color = TextTertiary, fontSize = 16.sp)
                     Spacer(Modifier.height(8.dp))
-                    Text("Tap + to add a device", color = TextTertiary, fontSize = 13.sp)
+                    Text("Нажмите +, чтобы добавить устройство", color = TextTertiary, fontSize = 13.sp)
                 }
             }
         } else {
@@ -108,7 +108,7 @@ private fun DeviceCard(
 
     val isOnline = device.status == "ONLINE" || device.status == "ACTIVE"
     val statusColor = if (isOnline) ColorConnected else ColorDisconnected
-    val statusLabel = if (isOnline) "Online" else "Offline"
+    val statusLabel = if (isOnline) "В сети" else "Не в сети"
 
     Card(
         modifier = Modifier.fillMaxWidth().animateContentSize(),
@@ -147,7 +147,7 @@ private fun DeviceCard(
 
                         device.lastConnectedAt?.let { ts ->
                             Text(
-                                "  ·  Last seen ${formatRelativeTime(ts)}",
+                                "  ·  Был(а) в сети ${formatRelativeTime(ts)}",
                                 color = TextTertiary,
                                 fontSize = 12.sp
                             )
@@ -178,7 +178,7 @@ private fun DeviceCard(
                     ) {
                         Icon(Icons.Default.Edit, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Rename")
+                        Text("Переименовать")
                     }
 
                     OutlinedButton(
@@ -189,7 +189,7 @@ private fun DeviceCard(
                     ) {
                         Icon(Icons.Default.LinkOff, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Remove")
+                        Text("Удалить")
                     }
                 }
             }
@@ -207,16 +207,16 @@ private fun DeviceCard(
     if (showRemoveConfirm) {
         AlertDialog(
             onDismissRequest = { showRemoveConfirm = false },
-            title = { Text("Remove Device?", color = TextPrimary) },
-            text = { Text("Remove ${device.alias}? You will need to pair again to reconnect.", color = TextSecondary) },
+            title = { Text("Удалить устройство?", color = TextPrimary) },
+            text = { Text("Удалить ${device.alias}? Для повторного подключения потребуется снова выполнить сопряжение.", color = TextSecondary) },
             confirmButton = {
                 TextButton(onClick = { onRemove(); showRemoveConfirm = false }) {
-                    Text("Remove", color = ColorFailed)
+                    Text("Удалить", color = ColorFailed)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showRemoveConfirm = false }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Отмена", color = TextSecondary)
                 }
             },
             containerColor = SurfaceElevated
@@ -230,7 +230,7 @@ private fun RenameDialog(currentName: String, onConfirm: (String) -> Unit, onDis
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rename Device", color = TextPrimary) },
+        title = { Text("Переименовать устройство", color = TextPrimary) },
         text = {
             OutlinedTextField(
                 value = text,
@@ -247,11 +247,11 @@ private fun RenameDialog(currentName: String, onConfirm: (String) -> Unit, onDis
         },
         confirmButton = {
             TextButton(onClick = { if (text.isNotBlank()) onConfirm(text.trim()) }) {
-                Text("Save", color = Primary)
+                Text("Сохранить", color = Primary)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary) }
+            TextButton(onClick = onDismiss) { Text("Отмена", color = TextSecondary) }
         },
         containerColor = SurfaceElevated
     )
@@ -260,9 +260,9 @@ private fun RenameDialog(currentName: String, onConfirm: (String) -> Unit, onDis
 private fun formatRelativeTime(timestamp: Long): String {
     val diff = System.currentTimeMillis() - timestamp
     return when {
-        diff < 60_000 -> "just now"
-        diff < 3_600_000 -> "${diff / 60_000}m ago"
-        diff < 86_400_000 -> "${diff / 3_600_000}h ago"
-        else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(timestamp))
+        diff < 60_000 -> "только что"
+        diff < 3_600_000 -> "${diff / 60_000}м назад"
+        diff < 86_400_000 -> "${diff / 3_600_000}ч назад"
+        else -> SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(timestamp))
     }
 }

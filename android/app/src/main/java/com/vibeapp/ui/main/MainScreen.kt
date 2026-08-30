@@ -211,10 +211,10 @@ private fun MainHeader(
 @Composable
 private fun ConnectionStatusChip(state: ConnectionState) {
     val (dotColor, label) = when (state) {
-        ConnectionState.CONNECTED -> ColorConnected to "Connected"
-        ConnectionState.CONNECTING -> ColorConnecting to "Connecting"
-        ConnectionState.RECONNECTING -> ColorReconnecting to "Reconnecting"
-        ConnectionState.DISCONNECTED -> ColorDisconnected to "Offline"
+        ConnectionState.CONNECTED -> ColorConnected to "Подключено"
+        ConnectionState.CONNECTING -> ColorConnecting to "Подключение..."
+        ConnectionState.RECONNECTING -> ColorReconnecting to "Переподключение..."
+        ConnectionState.DISCONNECTED -> ColorDisconnected to "Офлайн"
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -482,7 +482,7 @@ private fun ManualHoldButton(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = if (isActive) "VIBRATING" else "HOLD TO VIBRATE",
+                text = if (isActive) "ВИБРАЦИЯ" else "УДЕРЖИВАЙТЕ",
                 color = textColor,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -492,7 +492,7 @@ private fun ManualHoldButton(
             if (!isConnected) {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Not connected",
+                    text = "Не подключено",
                     color = TextTertiary,
                     fontSize = 11.sp
                 )
@@ -521,7 +521,7 @@ private fun HistorySection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "History",
+                "История",
                 color = TextSecondary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -532,7 +532,7 @@ private fun HistorySection(
                     onClick = onClear,
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                 ) {
-                    Text("Clear", color = TextTertiary, fontSize = 12.sp)
+                    Text("Очистить", color = TextTertiary, fontSize = 12.sp)
                 }
             }
         }
@@ -544,7 +544,7 @@ private fun HistorySection(
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No signals yet", color = TextTertiary, fontSize = 13.sp)
+                Text("Сигналов пока нет", color = TextTertiary, fontSize = 13.sp)
             }
         } else {
             LazyColumn(

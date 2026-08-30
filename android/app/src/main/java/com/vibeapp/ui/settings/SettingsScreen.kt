@@ -27,10 +27,10 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings", color = TextPrimary, fontWeight = FontWeight.SemiBold) },
+                title = { Text("Настройки", color = TextPrimary, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back", tint = TextSecondary)
+                        Icon(Icons.Default.ArrowBack, "Назад", tint = TextSecondary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Background)
@@ -45,36 +45,36 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("CONNECTIONS", color = TextTertiary, fontSize = 11.sp,
+            Text("ПОДКЛЮЧЕНИЯ", color = TextTertiary, fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp,
                 modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
 
             SettingsRow(
                 icon = Icons.Default.Devices,
-                title = "Paired Devices",
-                subtitle = "Manage connected phones",
+                title = "Сопряженные устройства",
+                subtitle = "Управление подключенными телефонами",
                 onClick = onOpenDevices
             )
 
             Spacer(Modifier.height(8.dp))
-            Text("VIBRATIONS", color = TextTertiary, fontSize = 11.sp,
+            Text("ВИБРАЦИЯ", color = TextTertiary, fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp,
                 modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
 
             SettingsRow(
                 icon = Icons.Default.Vibration,
-                title = "Vibration Patterns",
-                subtitle = "Configure all 10 patterns",
+                title = "Шаблоны вибрации",
+                subtitle = "Настройка 10 шаблонов",
                 onClick = onOpenVibrationEditor
             )
 
             Spacer(Modifier.height(8.dp))
-            Text("ABOUT", color = TextTertiary, fontSize = 11.sp,
+            Text("О ПРИЛОЖЕНИИ", color = TextTertiary, fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp,
                 modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
 
-            SettingsInfoRow(label = "Version", value = "1.0.0")
-            SettingsInfoRow(label = "Package", value = "com.vibeapp")
+            SettingsInfoRow(label = "Версия", value = "1.0.0")
+            SettingsInfoRow(label = "Пакет", value = "com.vibeapp")
         }
     }
 }
