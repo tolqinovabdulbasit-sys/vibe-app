@@ -48,6 +48,12 @@ class PairingRepository @Inject constructor(
         }
     }
 
+    companion object {
+        private const val PAIRING_CODES_PATH = "pairing_codes"
+        private const val DEVICES_PATH = "devices"
+        private const val CODE_TTL_MS = 15 * 60 * 1000L // 15 minutes
+    }
+
     private suspend fun ensureAuth() {
         try {
             val auth = FirebaseAuth.getInstance()
@@ -210,10 +216,10 @@ class PairingRepository @Inject constructor(
     ) {
         val timestamp = System.currentTimeMillis()
         // Store routing relationship (NOT the secret — only device IDs)
-        db.child("pairings").child("${myDeviceId}_${remoteDeviceId}").setValue(
+        getDb().child("pairings").child("${myDeviceId}_${remoteDeviceId}").setValue(
             mapOf("created_at" to timestamp, "active" to true)
         ).await()
-        db.child("pairings").child("${remoteDeviceId}_${myDeviceId}").setValue(
+        getDb().child("pairings").child("${remoteDeviceId}_${myDeviceId}").setValue(
             mapOf("created_at" to timestamp, "active" to true)
         ).await()
     }
