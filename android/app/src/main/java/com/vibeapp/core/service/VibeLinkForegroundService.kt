@@ -17,6 +17,7 @@ import com.vibeapp.core.notification.NotificationChannels
 import com.vibeapp.core.vibration.VibrationEngine
 import com.vibeapp.data.model.*
 import com.vibeapp.data.repository.CommandRepository
+import com.vibeapp.data.repository.PairingRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
