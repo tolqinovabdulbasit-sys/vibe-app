@@ -41,11 +41,7 @@ class PairingRepository @Inject constructor(
     private val deviceIdentityManager: DeviceIdentityManager
 ) {
     private fun getDb(): com.google.firebase.database.DatabaseReference {
-        return try {
-            FirebaseDatabase.getInstance().reference
-        } catch (e: Exception) {
-            FirebaseDatabase.getInstance("https://vibe-app-b07cc-default-rtdb.europe-west1.firebasedatabase.app").reference
-        }
+        return FirebaseDatabase.getInstance("https://vibe-app-b07cc-default-rtdb.europe-west1.firebasedatabase.app").reference
     }
 
     companion object {
