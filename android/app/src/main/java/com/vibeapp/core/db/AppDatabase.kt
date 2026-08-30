@@ -15,7 +15,7 @@ import com.vibeapp.core.db.entity.*
         HistoryEntity::class
     ],
     version = 1,
-    exportSchema = true
+    exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun deviceDao(): DeviceDao

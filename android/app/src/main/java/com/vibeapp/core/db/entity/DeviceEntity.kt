@@ -1,10 +1,13 @@
 package com.vibeapp.core.db.entity
 
 import androidx.room.ColumnInfo
-import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "devices")
+@Entity(
+    tableName = "devices",
+    indices = [Index(value = ["device_id"], unique = true)]
+)
 data class DeviceEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
