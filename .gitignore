@@ -1,0 +1,24 @@
+# Android
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# Secrets — NEVER commit these
+android/app/google-services.json
+android/keystore.properties
+*.keystore
+*.jks
+
+# Backend
+backend/functions/node_modules/
+backend/functions/lib/
+.firebase/
+firebase-debug.log

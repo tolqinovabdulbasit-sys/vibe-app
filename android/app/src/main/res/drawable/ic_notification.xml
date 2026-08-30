@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification icon — white vector on transparent background (required for Android notification icons) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Vibration wave icon -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M6.18,15.64a2.18,2.18 0,0 0,2.18 -2.18L8.36,5.36a2.18,2.18 0,0 0,-4.36 0L4,13.46A2.18,2.18 0,0 0,6.18 15.64ZM11,15.46h1.45V5.36a2.18,2.18 0,0 0,-4.36 0V15.46ZM11,19.64a2.18,2.18 0,0 0,4.36 0V9.55H11ZM15.82,15.64A2.18,2.18 0,0 0,18 13.46L18,5.36a2.18,2.18 0,0 0,-4.36 0L13.64,13.46A2.18,2.18 0,0 0,15.82 15.64Z" />
+</vector>

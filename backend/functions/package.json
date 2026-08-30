@@ -1,0 +1,23 @@
+{
+  "name": "vibelink-backend",
+  "version": "1.0.0",
+  "description": "VibeLink Firebase Cloud Functions backend",
+  "scripts": {
+    "build": "tsc",
+    "serve": "npm run build && firebase emulators:start --only functions,database",
+    "deploy": "firebase deploy --only functions,database"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^4.9.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "private": true
+}

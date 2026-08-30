@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">VibeLink</string>
+    <string name="notification_channel_connection">Connection Status</string>
+    <string name="notification_connection_active">VibeLink — Connection active</string>
+    <string name="notification_connected">● Connected</string>
+    <string name="notification_reconnecting">⟳ Reconnecting…</string>
+    <string name="notification_offline">○ Offline</string>
+</resources>
