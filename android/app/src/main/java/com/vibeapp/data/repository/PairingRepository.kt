@@ -12,6 +12,7 @@ import com.vibeapp.core.db.entity.PairingEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import java.security.SecureRandom
 import javax.inject.Inject
@@ -62,7 +63,10 @@ class PairingRepository @Inject constructor(
             "used" to false
         )
 
-        db.child(PAIRING_CODES_PATH).child(code).setValue(codeData).await()
+        withTimeoutOrNull(8000) {
+            db.child(PAIRING_CODES_PATH).child(code).setValue(codeData).await()
+        } ?: throw IllegalStateException("Firebase serveriga ulanib bo'lmadi. google-services.json faylini va internetni tekshiring.")
+
         Timber.d("Pairing code generated: $code")
         return code
     }
