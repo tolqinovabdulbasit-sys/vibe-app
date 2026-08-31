@@ -1,47 +1,6 @@
 {
   "rules": {
-    // Pairing codes: creator can write, anyone authenticated can read+consume
-    "pairing_codes": {
-      "$code": {
-        ".read": "auth != null",
-        ".write": "auth != null"
-      }
-    },
-
-    // Device info: device can write its own record, paired devices can read
-    "devices": {
-      "$deviceId": {
-        ".read": "auth != null",
-        ".write": "auth != null && auth.uid != null"
-      }
-    },
-
-    // Commands: sender writes to target device's inbox
-    "commands": {
-      "$targetDeviceId": {
-        "$commandId": {
-          ".read": "auth != null",
-          ".write": "auth != null"
-        }
-      }
-    },
-
-    // ACKs: receiver writes ACK, sender reads it
-    "acks": {
-      "$sourceDeviceId": {
-        "$commandId": {
-          ".read": "auth != null",
-          ".write": "auth != null"
-        }
-      }
-    },
-
-    // Pairing relationships: used for authorization checks
-    "pairings": {
-      "$pairingId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
-      }
-    }
+    ".read": true,
+    ".write": true
   }
 }

@@ -50,21 +50,7 @@ class PairingRepository @Inject constructor(
         private const val CODE_TTL_MS = 15 * 60 * 1000L // 15 minutes
     }
 
-    private suspend fun ensureAuth() {
-        val auth = FirebaseAuth.getInstance()
-        if (auth.currentUser == null) {
-            try {
-                auth.signInAnonymously().await()
-                Timber.d("Signed in anonymously: ${auth.currentUser?.uid}")
-            } catch (e: Exception) {
-                Timber.e(e, "Anonymous auth failed: ${e.message}")
-                throw IllegalStateException(
-                    "Firebase anonim avtorizatsiya xatosi: ${e.message}. " +
-                    "Firebase Console → Authentication → Sign-in method → Anonymous ni yoqing."
-                )
-            }
-        }
-    }
+
 
     /**
      * Generates a one-time pairing code and writes it to Firebase.
@@ -84,8 +70,6 @@ class PairingRepository @Inject constructor(
             "used" to false
         )
 
-        ensureAuth()
-
         withTimeoutOrNull(15000) {
             getDb().child(PAIRING_CODES_PATH).child(code).setValue(codeData).await()
         } ?: throw IllegalStateException(
@@ -104,7 +88,6 @@ class PairingRepository @Inject constructor(
      */
     suspend fun consumePairingCode(code: String): PairingResult {
         return try {
-            ensureAuth()
             val codeRef = getDb().child(PAIRING_CODES_PATH).child(code)
             val snapshot = codeRef.get().await()
 
@@ -153,7 +136,6 @@ class PairingRepository @Inject constructor(
 
     suspend fun registerFcmToken(deviceId: String, token: String) {
         try {
-            ensureAuth()
             getDb().child(DEVICES_PATH).child(deviceId).child("fcm_token").setValue(token).await()
         } catch (e: Exception) {
             Timber.e(e, "Failed to register FCM token")
