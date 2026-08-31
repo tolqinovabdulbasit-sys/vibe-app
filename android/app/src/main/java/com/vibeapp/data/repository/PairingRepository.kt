@@ -40,6 +40,8 @@ class PairingRepository @Inject constructor(
     private val mqttManager: MqttManager,
     private val json: Json
 ) {
+    private val repositoryScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+
     /**
      * Generates a one-time 8-character pairing code and subscribes to the MQTT topic.
      * When Device B enters this code, it publishes its identity to vibeapp/pair/$code.
@@ -80,7 +82,7 @@ class PairingRepository @Inject constructor(
                     Timber.e(e, "Error processing MQTT pairing request")
                 }
             }
-            .launchIn(kotlinx.coroutines.GlobalScope)
+            .launchIn(repositoryScope)
 
         Timber.d("Pairing code generated: $code")
         return code

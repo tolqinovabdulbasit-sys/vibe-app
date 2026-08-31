@@ -16,6 +16,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url = java.net.URI.create("https://repo.eclipse.org/content/repositories/paho-releases/") }
     }
 }
 
