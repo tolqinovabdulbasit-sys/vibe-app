@@ -6,21 +6,17 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
 import com.vibeapp.MainActivity
 import com.vibeapp.R
 import com.vibeapp.core.crypto.DeviceIdentityManager
 import com.vibeapp.core.network.ConnectionState
-import com.vibeapp.core.network.WebSocketManager
+import com.vibeapp.core.network.MqttManager
 import com.vibeapp.core.notification.NotificationChannels
 import com.vibeapp.core.vibration.VibrationEngine
 import com.vibeapp.data.model.*
 import com.vibeapp.data.repository.CommandRepository
 import com.vibeapp.data.repository.PairingRepository
 import dagger.hilt.android.AndroidEntryPoint
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.Json
@@ -28,11 +24,8 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * Persistent foreground service using type=remoteMessaging.
- * Manages WebSocket connection, incoming command processing,
- * vibration execution, and ACK sending.
- *
- * Safety guarantee: stops manual vibration on connection loss.
+ * Persistent foreground service for VibeLink.
+ * Connects to ultra-fast MQTT broker for real-time vibration streaming and execution.
  */
 @AndroidEntryPoint
 class VibeLinkForegroundService : Service() {
@@ -40,11 +33,10 @@ class VibeLinkForegroundService : Service() {
     companion object {
         const val ACTION_START = "com.vibeapp.START"
         const val ACTION_STOP = "com.vibeapp.STOP"
-        const val ACTION_FCM_WAKEUP = "com.vibeapp.FCM_WAKEUP"
         const val NOTIFICATION_ID = 1001
     }
 
-    @Inject lateinit var webSocketManager: WebSocketManager
+    @Inject lateinit var mqttManager: MqttManager
     @Inject lateinit var vibrationEngine: VibrationEngine
     @Inject lateinit var deviceIdentityManager: DeviceIdentityManager
     @Inject lateinit var commandRepository: CommandRepository
@@ -64,7 +56,6 @@ class VibeLinkForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> stopSelf()
-            ACTION_FCM_WAKEUP -> handleFcmWakeup(intent)
             else -> initializeConnection()
         }
         return START_STICKY
@@ -73,89 +64,29 @@ class VibeLinkForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        // Stop any ongoing vibration on service destroy for safety
         vibrationEngine.stopAll()
-        webSocketManager.disconnect()
+        mqttManager.disconnect()
         serviceScope.cancel()
         super.onDestroy()
     }
-
-    // ----------------------------------------------------------------
-    // Initialization
-    // ----------------------------------------------------------------
 
     private fun initializeConnection() {
         serviceScope.launch {
             try {
                 deviceId = deviceIdentityManager.getOrCreateDeviceId()
-
-                // Sign in anonymously with Firebase
-                val firebaseUid = signInFirebase()
-
-                // Get FCM token and WebSocket URL from Realtime Database
-                val wsUrl = buildWebSocketUrl()
-                val token = firebaseUid ?: ""
-
-                webSocketManager.configure(
-                    deviceId = deviceId,
-                    authToken = token,
-                    wsUrl = wsUrl
-                )
-                webSocketManager.connect()
-                registerFcmToken()
-
+                mqttManager.connect(deviceId)
             } catch (e: Exception) {
-                Timber.e(e, "Failed to initialize connection")
+                Timber.e(e, "Failed to initialize MQTT connection")
             }
         }
     }
-
-    private suspend fun signInFirebase(): String? {
-        return try {
-            val auth = FirebaseAuth.getInstance()
-            if (auth.currentUser == null) {
-                val result = auth.signInAnonymously().await()
-                result.user?.uid
-            } else {
-                auth.currentUser?.getIdToken(false)?.await()?.token
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Firebase auth failed")
-            null
-        }
-    }
-
-    private fun buildWebSocketUrl(): String {
-        // Firebase Realtime Database WebSocket endpoint
-        // Replace YOUR_PROJECT_ID with actual project from google-services.json
-        val db = FirebaseDatabase.getInstance("https://vibe-app-b07cc-default-rtdb.firebaseio.com")
-        val ref = db.reference
-        // Use RTDB REST as WebSocket backing
-        return ref.toString().replace("https://", "wss://") + "/.ws?v=5"
-    }
-
-    private fun registerFcmToken() {
-        // FCM token registration to Firebase for this device
-        com.google.firebase.messaging.FirebaseMessaging.getInstance().token
-            .addOnSuccessListener { token ->
-                Timber.d("FCM token obtained, registering...")
-                serviceScope.launch {
-                    pairingRepository.registerFcmToken(deviceId, token)
-                }
-            }
-    }
-
-    // ----------------------------------------------------------------
-    // Connection State Observer
-    // ----------------------------------------------------------------
 
     private fun observeConnectionState() {
         serviceScope.launch {
-            webSocketManager.connectionState.collectLatest { state ->
-                Timber.d("Connection state: $state")
+            mqttManager.connectionState.collectLatest { state ->
+                Timber.d("MQTT Connection state: $state")
                 updateNotification(state)
 
-                // SAFETY: stop manual vibration on connection loss
                 if (state == ConnectionState.DISCONNECTED ||
                     state == ConnectionState.RECONNECTING) {
                     vibrationEngine.stopManual()
@@ -164,19 +95,16 @@ class VibeLinkForegroundService : Service() {
         }
     }
 
-    // ----------------------------------------------------------------
-    // Incoming Message Processing
-    // ----------------------------------------------------------------
-
     private fun observeIncomingMessages() {
         serviceScope.launch {
-            webSocketManager.incomingMessages.collect { message ->
-                when (message.type) {
-                    "COMMAND" -> processIncomingCommand(message.payload)
-                    "ACK" -> processIncomingAck(message.payload)
-                    "STATUS" -> processDeviceStatus(message.payload)
-                    "HEARTBEAT" -> { /* Handled by WebSocketManager */ }
-                    else -> Timber.w("Unknown message type: ${message.type}")
+            mqttManager.incomingMessages.collect { message ->
+                val topic = message.topic
+                val payload = message.payload
+
+                if (topic == "vibeapp/cmd/$deviceId") {
+                    processIncomingCommand(payload)
+                } else if (topic == "vibeapp/ack/$deviceId") {
+                    processIncomingAck(payload)
                 }
             }
         }
@@ -185,26 +113,21 @@ class VibeLinkForegroundService : Service() {
     private suspend fun processIncomingCommand(payloadJson: String) {
         try {
             val command = json.decodeFromString<VibrationCommand>(payloadJson)
-            Timber.d("Incoming command: ${command.commandId} type=${command.commandType}")
+            Timber.d("Incoming MQTT command: ${command.commandId} type=${command.commandType}")
 
-            // Verify this command is from a paired device
             val isPaired = pairingRepository.isPaired(command.sourceDeviceId)
             if (!isPaired) {
                 Timber.w("Command from unpaired device ${command.sourceDeviceId} — rejected")
                 return
             }
 
-            // Deduplication — don't vibrate twice for same commandId
             if (!vibrationEngine.tryMarkProcessed(command.commandId)) {
-                Timber.d("Duplicate command ${command.commandId} — ignored, sending existing ACK")
                 sendAck(command.commandId, command.sourceDeviceId, DeliveryStatus.VIBRATION_STARTED)
                 return
             }
 
-            // Save to history
             commandRepository.saveIncomingCommand(command)
 
-            // Execute vibration
             when (command.commandType) {
                 CommandType.PATTERN -> {
                     val pattern = commandRepository.getPattern(command.vibrationPatternSlot)
@@ -212,8 +135,6 @@ class VibeLinkForegroundService : Service() {
                         vibrationEngine.playPattern(pattern)
                         sendAck(command.commandId, command.sourceDeviceId, DeliveryStatus.VIBRATION_STARTED)
                         commandRepository.updateStatus(command.commandId, DeliveryStatus.VIBRATION_STARTED)
-                    } else {
-                        Timber.w("Pattern slot ${command.vibrationPatternSlot} not found")
                     }
                 }
                 CommandType.MANUAL_START -> {
@@ -227,7 +148,7 @@ class VibeLinkForegroundService : Service() {
             }
 
         } catch (e: Exception) {
-            Timber.e(e, "Error processing command")
+            Timber.e(e, "Error processing MQTT command")
         }
     }
 
@@ -235,21 +156,9 @@ class VibeLinkForegroundService : Service() {
         serviceScope.launch {
             try {
                 val ack = json.decodeFromString<AckMessage>(payloadJson)
-                Timber.d("ACK received for ${ack.commandId}: ${ack.status}")
                 commandRepository.updateStatus(ack.commandId, ack.status)
             } catch (e: Exception) {
-                Timber.e(e, "Error processing ACK")
-            }
-        }
-    }
-
-    private fun processDeviceStatus(payloadJson: String) {
-        serviceScope.launch {
-            try {
-                val status = json.decodeFromString<DeviceStatusMessage>(payloadJson)
-                commandRepository.updateDeviceStatus(status.deviceId, status.status)
-            } catch (e: Exception) {
-                Timber.e(e, "Error processing device status")
+                Timber.e(e, "Error processing MQTT ACK")
             }
         }
     }
@@ -261,34 +170,11 @@ class VibeLinkForegroundService : Service() {
             status = status,
             timestamp = System.currentTimeMillis()
         )
-        webSocketManager.sendAck(ack)
+        mqttManager.publish("vibeapp/ack/$targetDeviceId", json.encodeToString(ack))
     }
-
-    // ----------------------------------------------------------------
-    // FCM Wakeup
-    // ----------------------------------------------------------------
-
-    private fun handleFcmWakeup(intent: Intent) {
-        Timber.d("FCM wakeup received")
-        // Reconnect WebSocket if not connected
-        if (webSocketManager.connectionState.value != ConnectionState.CONNECTED) {
-            initializeConnection()
-        }
-        // If FCM carries an inline command payload, process it
-        val payload = intent.getStringExtra("fcm_payload")
-        if (payload != null) {
-            serviceScope.launch {
-                processIncomingCommand(payload)
-            }
-        }
-    }
-
-    // ----------------------------------------------------------------
-    // Notification
-    // ----------------------------------------------------------------
 
     private fun startForegroundWithNotification() {
-        val notification = buildNotification("Connecting...")
+        val notification = buildNotification("Ulanyapti...")
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
@@ -299,10 +185,10 @@ class VibeLinkForegroundService : Service() {
 
     private fun updateNotification(state: ConnectionState) {
         val statusText = when (state) {
-            ConnectionState.CONNECTED -> "● Connected"
-            ConnectionState.CONNECTING -> "⟳ Connecting..."
-            ConnectionState.RECONNECTING -> "⟳ Reconnecting..."
-            ConnectionState.DISCONNECTED -> "○ Offline"
+            ConnectionState.CONNECTED -> "● Ulangan (MQTT Instant)"
+            ConnectionState.CONNECTING -> "⟳ Ulanmoqda..."
+            ConnectionState.RECONNECTING -> "⟳ Qayta ulanmoqda..."
+            ConnectionState.DISCONNECTED -> "○ Oflayn"
         }
         val notification = buildNotification(statusText)
         val nm = getSystemService(NotificationManager::class.java)
@@ -327,10 +213,3 @@ class VibeLinkForegroundService : Service() {
             .build()
     }
 }
-
-// Extension to await Firebase Tasks in coroutines
-suspend fun <T> com.google.android.gms.tasks.Task<T>.await(): T =
-    kotlinx.coroutines.suspendCancellableCoroutine { cont ->
-        addOnSuccessListener { cont.resume(it) {} }
-        addOnFailureListener { cont.resumeWithException(it) }
-    }

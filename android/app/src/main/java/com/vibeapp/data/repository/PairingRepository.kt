@@ -1,18 +1,16 @@
 package com.vibeapp.data.repository
 
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.getValue
 import com.vibeapp.core.crypto.DeviceIdentityManager
 import com.vibeapp.core.crypto.KeystoreManager
 import com.vibeapp.core.db.dao.DeviceDao
 import com.vibeapp.core.db.dao.PairingDao
 import com.vibeapp.core.db.entity.DeviceEntity
 import com.vibeapp.core.db.entity.PairingEntity
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.tasks.await
+import com.vibeapp.core.network.MqttManager
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import timber.log.Timber
 import java.security.SecureRandom
 import javax.inject.Inject
@@ -38,45 +36,51 @@ class PairingRepository @Inject constructor(
     private val deviceDao: DeviceDao,
     private val pairingDao: PairingDao,
     private val keystoreManager: KeystoreManager,
-    private val deviceIdentityManager: DeviceIdentityManager
+    private val deviceIdentityManager: DeviceIdentityManager,
+    private val mqttManager: MqttManager,
+    private val json: Json
 ) {
-    private fun getDb(): com.google.firebase.database.DatabaseReference {
-        return FirebaseDatabase.getInstance("https://vibe-app-b07cc-default-rtdb.firebaseio.com").reference
-    }
-
-    companion object {
-        private const val PAIRING_CODES_PATH = "pairing_codes"
-        private const val DEVICES_PATH = "devices"
-        private const val CODE_TTL_MS = 15 * 60 * 1000L // 15 minutes
-    }
-
-
-
     /**
-     * Generates a one-time pairing code and writes it to Firebase.
-     * Returns the 8-character code to show to the user.
+     * Generates a one-time 8-character pairing code and subscribes to the MQTT topic.
+     * When Device B enters this code, it publishes its identity to vibeapp/pair/$code.
      */
     suspend fun generatePairingCode(): String {
-        val deviceId = deviceIdentityManager.getOrCreateDeviceId()
-        val displayName = deviceIdentityManager.getOrCreateDisplayName()
+        val myDeviceId = deviceIdentityManager.getOrCreateDeviceId()
+        val myDisplayName = deviceIdentityManager.getOrCreateDisplayName()
         val code = generateSecureCode()
 
-        val codeData = mapOf(
-            "code" to code,
-            "initiator_device_id" to deviceId,
-            "initiator_display_name" to displayName,
-            "created_at" to System.currentTimeMillis(),
-            "expires_at" to System.currentTimeMillis() + CODE_TTL_MS,
-            "used" to false
-        )
+        mqttManager.connect(myDeviceId)
+        val pairTopic = "vibeapp/pair/$code"
+        mqttManager.subscribe(pairTopic)
 
-        withTimeoutOrNull(15000) {
-            getDb().child(PAIRING_CODES_PATH).child(code).setValue(codeData).await()
-        } ?: throw IllegalStateException(
-            "Firebase bazaga yozish vaqti tugadi (Timeout 15s). " +
-            "URL: https://vibe-app-b07cc-default-rtdb.firebaseio.com. " +
-            "Internet aloqasini va Firebase Console holatini tekshiring."
-        )
+        // Background listener for incoming consumer requests on this code
+        mqttManager.incomingMessages
+            .filter { it.topic == pairTopic }
+            .take(1)
+            .onEach { msg ->
+                try {
+                    val data = json.decodeFromString<Map<String, String>>(msg.payload)
+                    val consumerDeviceId = data["consumer_device_id"] ?: return@onEach
+                    val consumerDisplayName = data["consumer_display_name"] ?: "Unknown Device"
+
+                    // Save pairing locally
+                    val sharedSecret = generateSharedSecret()
+                    val encryptedSecret = keystoreManager.encrypt(sharedSecret)
+                    savePairingLocally(consumerDeviceId, consumerDisplayName, encryptedSecret)
+
+                    // Reply back to consumer on vibeapp/pair/$code/ack
+                    val ackData = mapOf(
+                        "initiator_device_id" to myDeviceId,
+                        "initiator_display_name" to myDisplayName
+                    )
+                    mqttManager.publish("vibeapp/pair/$code/ack", json.encodeToString(ackData))
+                    Timber.d("Pairing complete via MQTT for code: $code")
+
+                } catch (e: Exception) {
+                    Timber.e(e, "Error processing MQTT pairing request")
+                }
+            }
+            .launchIn(kotlinx.coroutines.GlobalScope)
 
         Timber.d("Pairing code generated: $code")
         return code
@@ -84,61 +88,52 @@ class PairingRepository @Inject constructor(
 
     /**
      * Consumes a pairing code entered by the user.
-     * On success, saves the pairing locally and returns remote device info.
+     * Publishes identity to vibeapp/pair/$code and waits for response.
      */
     suspend fun consumePairingCode(code: String): PairingResult {
         return try {
-            val codeRef = getDb().child(PAIRING_CODES_PATH).child(code)
-            val snapshot = codeRef.get().await()
+            val formattedCode = code.uppercase().trim()
+            val myDeviceId = deviceIdentityManager.getOrCreateDeviceId()
+            val myDisplayName = deviceIdentityManager.getOrCreateDisplayName()
 
-            if (!snapshot.exists()) {
-                return PairingResult.InvalidCode
+            mqttManager.connect(myDeviceId)
+
+            val pairTopic = "vibeapp/pair/$formattedCode"
+            val ackTopic = "vibeapp/pair/$formattedCode/ack"
+
+            mqttManager.subscribe(ackTopic)
+
+            // Publish consumer info
+            val consumerData = mapOf(
+                "consumer_device_id" to myDeviceId,
+                "consumer_display_name" to myDisplayName
+            )
+            mqttManager.publish(pairTopic, json.encodeToString(consumerData))
+
+            // Wait up to 10s for initiator response
+            val response = withTimeoutOrNull(10000) {
+                mqttManager.incomingMessages
+                    .filter { it.topic == ackTopic }
+                    .first()
             }
 
-            val used = snapshot.child("used").getValue<Boolean>() ?: false
-            if (used) return PairingResult.AlreadyUsed
-
-            val expiresAt = snapshot.child("expires_at").getValue<Long>() ?: 0L
-            if (System.currentTimeMillis() > expiresAt) {
-                codeRef.removeValue().await()
-                return PairingResult.ExpiredCode
+            if (response == null) {
+                return PairingResult.Error("Ulanish vaqti tugadi. Kodni qayta kiritib ko'ring.")
             }
 
-            val remoteDeviceId = snapshot.child("initiator_device_id").getValue<String>()
-                ?: return PairingResult.Error("Missing device ID")
-            val remoteDisplayName = snapshot.child("initiator_display_name").getValue<String>()
-                ?: "Unknown Device"
+            val ackData = json.decodeFromString<Map<String, String>>(response.payload)
+            val remoteDeviceId = ackData["initiator_device_id"] ?: return PairingResult.Error("Missing device ID")
+            val remoteDisplayName = ackData["initiator_display_name"] ?: "Unknown Device"
 
-            // Mark code as used (atomic — prevents race conditions)
-            codeRef.child("used").setValue(true).await()
-            codeRef.child("consumer_device_id").setValue(
-                deviceIdentityManager.getOrCreateDeviceId()
-            ).await()
-
-            // Generate shared pairing secret
             val sharedSecret = generateSharedSecret()
             val encryptedSecret = keystoreManager.encrypt(sharedSecret)
-
-            // Save pairing locally
-            val myDeviceId = deviceIdentityManager.getOrCreateDeviceId()
             savePairingLocally(remoteDeviceId, remoteDisplayName, encryptedSecret)
-
-            // Register pairing in Firebase (both directions)
-            registerPairingInFirebase(myDeviceId, remoteDeviceId, sharedSecret)
 
             PairingResult.Success(remoteDeviceId, remoteDisplayName)
 
         } catch (e: Exception) {
-            Timber.e(e, "Error consuming pairing code")
+            Timber.e(e, "Error consuming pairing code via MQTT")
             PairingResult.Error(e.message ?: "Unknown error")
-        }
-    }
-
-    suspend fun registerFcmToken(deviceId: String, token: String) {
-        try {
-            getDb().child(DEVICES_PATH).child(deviceId).child("fcm_token").setValue(token).await()
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to register FCM token")
         }
     }
 
@@ -195,23 +190,8 @@ class PairingRepository @Inject constructor(
         )
     }
 
-    private suspend fun registerPairingInFirebase(
-        myDeviceId: String,
-        remoteDeviceId: String,
-        sharedSecret: String
-    ) {
-        val timestamp = System.currentTimeMillis()
-        // Store routing relationship (NOT the secret — only device IDs)
-        getDb().child("pairings").child("${myDeviceId}_${remoteDeviceId}").setValue(
-            mapOf("created_at" to timestamp, "active" to true)
-        ).await()
-        getDb().child("pairings").child("${remoteDeviceId}_${myDeviceId}").setValue(
-            mapOf("created_at" to timestamp, "active" to true)
-        ).await()
-    }
-
     private fun generateSecureCode(): String {
-        val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // Ambiguous chars removed
+        val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
         val random = SecureRandom()
         return (1..8).map { chars[random.nextInt(chars.length)] }.joinToString("")
     }

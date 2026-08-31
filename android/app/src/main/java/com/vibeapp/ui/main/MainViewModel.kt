@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vibeapp.core.crypto.DeviceIdentityManager
 import com.vibeapp.core.network.ConnectionState
-import com.vibeapp.core.network.WebSocketManager
+import com.vibeapp.core.network.MqttManager
 import com.vibeapp.core.vibration.VibrationEngine
 import com.vibeapp.data.model.*
 import com.vibeapp.data.repository.CommandRepository
@@ -14,6 +14,8 @@ import com.vibeapp.data.repository.PairingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.util.UUID
 import javax.inject.Inject
 
@@ -80,7 +82,7 @@ class MainViewModel @Inject constructor(
 
     private fun observeConnectionState() {
         viewModelScope.launch {
-            webSocketManager.connectionState.collectLatest { state ->
+            mqttManager.connectionState.collectLatest { state ->
                 _uiState.update { it.copy(connectionState = state) }
             }
         }
@@ -147,7 +149,7 @@ class MainViewModel @Inject constructor(
 
                 _uiState.update { it.copy(lastStatusMessage = "Sending...") }
                 commandRepository.saveOutgoingCommand(command)
-                webSocketManager.sendCommand(command)
+                mqttManager.publish("vibeapp/cmd/$targetDeviceId", json.encodeToString(command))
             }
         }
     }
@@ -174,7 +176,7 @@ class MainViewModel @Inject constructor(
                     sequence = System.currentTimeMillis()
                 )
                 commandRepository.saveOutgoingCommand(command)
-                webSocketManager.sendCommand(command)
+                mqttManager.publish("vibeapp/cmd/$targetDeviceId", json.encodeToString(command))
             }
         }
     }
@@ -199,7 +201,7 @@ class MainViewModel @Inject constructor(
                     sequence = System.currentTimeMillis()
                 )
                 commandRepository.saveOutgoingCommand(command)
-                webSocketManager.sendCommand(command)
+                mqttManager.publish("vibeapp/cmd/$targetDeviceId", json.encodeToString(command))
             }
         }
     }

@@ -140,4 +140,7 @@ dependencies {
 
     // Logging
     implementation(libs.timber)
+
+    // MQTT Client
+    implementation(libs.paho.mqtt)
 }
