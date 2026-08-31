@@ -41,7 +41,7 @@ class PairingRepository @Inject constructor(
     private val deviceIdentityManager: DeviceIdentityManager
 ) {
     private fun getDb(): com.google.firebase.database.DatabaseReference {
-        return FirebaseDatabase.getInstance("https://vibe-app-b07cc-default-rtdb.europe-west1.firebasedatabase.app").reference
+        return FirebaseDatabase.getInstance("https://vibe-app-b07cc-default-rtdb.firebaseio.com").reference
     }
 
     companion object {
@@ -51,14 +51,18 @@ class PairingRepository @Inject constructor(
     }
 
     private suspend fun ensureAuth() {
-        try {
-            val auth = FirebaseAuth.getInstance()
-            if (auth.currentUser == null) {
+        val auth = FirebaseAuth.getInstance()
+        if (auth.currentUser == null) {
+            try {
                 auth.signInAnonymously().await()
                 Timber.d("Signed in anonymously: ${auth.currentUser?.uid}")
+            } catch (e: Exception) {
+                Timber.e(e, "Anonymous auth failed: ${e.message}")
+                throw IllegalStateException(
+                    "Firebase anonim avtorizatsiya xatosi: ${e.message}. " +
+                    "Firebase Console → Authentication → Sign-in method → Anonymous ni yoqing."
+                )
             }
-        } catch (e: Exception) {
-            Timber.w(e, "Anonymous auth failed or not enabled: ${e.message}")
         }
     }
 
@@ -82,9 +86,13 @@ class PairingRepository @Inject constructor(
 
         ensureAuth()
 
-        withTimeoutOrNull(8000) {
+        withTimeoutOrNull(15000) {
             getDb().child(PAIRING_CODES_PATH).child(code).setValue(codeData).await()
-        } ?: throw IllegalStateException("Firebase ulanish vaqti tugadi (Timeout 8s). Internet va Realtime Database holatini tekshiring.")
+        } ?: throw IllegalStateException(
+            "Firebase bazaga yozish vaqti tugadi (Timeout 15s). " +
+            "URL: https://vibe-app-b07cc-default-rtdb.firebaseio.com. " +
+            "Internet aloqasini va Firebase Console holatini tekshiring."
+        )
 
         Timber.d("Pairing code generated: $code")
         return code

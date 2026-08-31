@@ -128,7 +128,7 @@ class VibeLinkForegroundService : Service() {
     private fun buildWebSocketUrl(): String {
         // Firebase Realtime Database WebSocket endpoint
         // Replace YOUR_PROJECT_ID with actual project from google-services.json
-        val db = FirebaseDatabase.getInstance("https://vibe-app-b07cc-default-rtdb.europe-west1.firebasedatabase.app")
+        val db = FirebaseDatabase.getInstance("https://vibe-app-b07cc-default-rtdb.firebaseio.com")
         val ref = db.reference
         // Use RTDB REST as WebSocket backing
         return ref.toString().replace("https://", "wss://") + "/.ws?v=5"

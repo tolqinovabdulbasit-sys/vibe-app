@@ -1,7 +1,7 @@
 {
   "project_info": {
     "project_number": "872074394577",
-    "firebase_url": "https://vibe-app-b07cc-default-rtdb.europe-west1.firebasedatabase.app",
+    "firebase_url": "https://vibe-app-b07cc-default-rtdb.firebaseio.com",
     "project_id": "vibe-app-b07cc",
     "storage_bucket": "vibe-app-b07cc.firebasestorage.app"
   },
